@@ -1,5 +1,6 @@
 from pandas import DataFrame as DF
 import pandas as pd
+from datetime import datetime
 
 
 class SLURMAnalyzer:
@@ -12,6 +13,7 @@ class SLURMAnalyzer:
                 "elapsed": job["time"]["elapsed"],
                 "start_time": job["time"]["start"],
                 "submission_time": job["time"]["submission"],
+                "job_name": job["name"],
             }
             for key in ["qos", "account", "partition", "qos", "user"]:
                 record[key] = job[key]
@@ -36,6 +38,10 @@ class SLURMAnalyzer:
         df["wait_time"] = df["start_time"] - df["submission_time"]
         for c in ["start_time", "submission_time"]:
             df[c] = pd.to_datetime(df[c], unit="s")
+        df["wait_time_h"] = df["wait_time"] / 3600
+        df["gpu_time_h"] = df["gpu_time"] / 3600
+        df["submission_hour"] = df["submission_time"].dt.hour
+        df["age_days"] = (df.start_time - datetime.now()).dt.days
    
     @staticmethod
     def _sanity_filter(df: DF) -> DF:
