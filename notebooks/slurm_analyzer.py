@@ -41,7 +41,9 @@ class SLURMAnalyzer:
         df["wait_time_h"] = df["wait_time"] / 3600
         df["gpu_time_h"] = df["gpu_time"] / 3600
         df["submission_hour"] = df["submission_time"].dt.hour
-        df["age_days"] = (df.start_time - datetime.now()).dt.days
+        df["age_days"] = -(df.start_time - datetime.now()).dt.days
+        df["elapsed_h"] = df["elapsed"] / 3600
+        df["n_nodes"] = df["n_gpus"] // 8 + 1
    
     @staticmethod
     def _sanity_filter(df: DF) -> DF:
