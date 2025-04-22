@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class SLURMAnalyzer:
-    def parse(self, data: dict) -> DF:
+    def parse(self, data: dict, **kwargs) -> DF:
         records = []
         for job in data["jobs"]:
             n_gpus = self._get_n_gpus(job)
@@ -14,6 +14,7 @@ class SLURMAnalyzer:
                 "start_time": job["time"]["start"],
                 "submission_time": job["time"]["submission"],
                 "job_name": job["name"],
+                "job_id": job["job_id"],
                 "limit": job["time"]["limit"]["number"],
             }
             for key in ["qos", "account", "partition", "qos", "user", "allocation_nodes"]:
@@ -21,7 +22,7 @@ class SLURMAnalyzer:
             records.append(record)
         df = pd.DataFrame.from_records(records)
         self._augment_df(df)
-        df = self._sanity_filter(df)
+        df = self._sanity_filter(df, **kwargs)
         return df
 
 
@@ -46,7 +47,7 @@ class SLURMAnalyzer:
         df["elapsed_h"] = df["elapsed"] / 3600
    
     @staticmethod
-    def _sanity_filter(df: DF) -> DF:
+    def _sanity_filter(df: DF, no_gpus_mask=True, short_jobs_mask=True, long_wait_mask=True) -> DF:
 
         def mask(df, name: str, query: str):
             n_before = len(df)
@@ -57,9 +58,11 @@ class SLURMAnalyzer:
             if n_before != n_after:
                 print(f"Filtered {n_before - n_after} jobs ({100*frac_filtered:.0f}%) with {name}")
             return df
-
-        df = mask(df, "no gpus", "n_gpus > 0")
-        df = mask(df, "< 10min run time", "elapsed > 600")
-        df = mask(df, "wait time > 1 month", "wait_time < 3600*24*31")
+        if no_gpus_mask:
+            df = mask(df, "no gpus", "n_gpus > 0")
+        if short_jobs_mask:
+            df = mask(df, "< 10min run time", "elapsed > 600")
+        if long_wait_mask:
+            df = mask(df, "wait time > 1 month", "wait_time < 3600*24*31")
         return df
     
